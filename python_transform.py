@@ -63,7 +63,7 @@ model = GPT2LMHeadModel.from_pretrained('gpt2')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 model = model.to(device) 
 
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 EPOCHS = 10
 LEARNING_RATE = 0.00002
 WARMUP_STEPS = 10000
@@ -78,9 +78,9 @@ batch_count = 0
 
 script_loader = DataLoader(ProgrammingLanguagesDataset(tokenizer=tokenizer))
 for epoch in range(EPOCHS):
+    print("Starting Epoch : ",epoch)
     for _ , script in enumerate(script_loader):
         outputs = model(script.to(device), labels=script.to(device))
-        print("Running !")
         loss, logits = outputs[:2]                        
         loss.backward()
         sum_loss = sum_loss + loss.detach().data
@@ -101,7 +101,7 @@ for epoch in range(EPOCHS):
                                     bos_token_id=random.randint(1,30000),
                                     do_sample=True,   
                                     top_k=50, 
-                                    max_length = 1000,
+                                    max_length = 30,
                                     top_p=0.95, 
                                     num_return_sequences=1
                                 )
