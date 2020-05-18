@@ -28,7 +28,7 @@ class ProgrammingLanguagesDataset(Dataset):
     def __init__(self,\
         filenames_path='py150_files/python100k_train.txt',\
         file_source_path='py150_files/',
-        samples=10,
+        samples=70000,
         block_size=512,
         tokenizer=PreTrainedTokenizer()):
         with open(filenames_path) as f: 
@@ -64,7 +64,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device) 
 
 BATCH_SIZE = 1
-EPOCHS = 1
+EPOCHS = 10
 LEARNING_RATE = 0.00002
 WARMUP_STEPS = 10000
 
