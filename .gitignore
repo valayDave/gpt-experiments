@@ -1,0 +1,11 @@
+.idea
+venv
+.env/
+
+models
+gpt2-pytorch_model.bin
+gpt-2*/
+__pycache_
+py150*/
+.DS_Store
+py150*
