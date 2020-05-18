@@ -23,12 +23,13 @@ from transformers import (
     TrainingArguments, 
     set_seed, 
 )   
-
+from transformers import WEIGHTS_NAME, CONFIG_NAME
+output_dir = "./storage/models/"
 class ProgrammingLanguagesDataset(Dataset):
     def __init__(self,\
         filenames_path='py150_files/python100k_train.txt',\
         file_source_path='py150_files/',
-        samples=70000,
+        samples=70,
         block_size=512,
         tokenizer=PreTrainedTokenizer()):
         with open(filenames_path) as f: 
@@ -101,7 +102,7 @@ for epoch in range(EPOCHS):
                                     bos_token_id=random.randint(1,30000),
                                     do_sample=True,   
                                     top_k=50, 
-                                    max_length = 30,
+                                    max_length =200,
                                     top_p=0.95, 
                                     num_return_sequences=1
                                 )
@@ -113,3 +114,10 @@ for epoch in range(EPOCHS):
             batch_count = 0
             sum_loss = 0.0
             model.train()
+
+
+output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
+output_config_file = os.path.join(output_dir, CONFIG_NAME)
+torch.save(model.state_dict(), output_model_file)
+model.config.to_json_file(output_config_file)
+tokenizer.save_vocabulary(output_dir)
