@@ -22,14 +22,30 @@ from transformers import (
     Trainer, 
     TrainingArguments, 
     set_seed, 
+    WEIGHTS_NAME, 
+    CONFIG_NAME
 )   
-from transformers import WEIGHTS_NAME, CONFIG_NAME
-output_dir = "./storage/models/"
+import time
+output_dir = "./storage/models/"+str(int(time.time()))+"/"
+def safe_mkdir(dir_path):
+    try:
+        os.makedirs(dir_path)
+    except:
+        pass
+
+def checkpoint_model(ml_model,dir_path):
+    safe_mkdir(dir_path)
+    output_model_file = os.path.join(dir_path, WEIGHTS_NAME)
+    output_config_file = os.path.join(dir_path, CONFIG_NAME)
+    torch.save(ml_model.state_dict(), output_model_file)
+    model.config.to_json_file(output_config_file)
+    tokenizer.save_vocabulary(dir_path)
+
 class ProgrammingLanguagesDataset(Dataset):
     def __init__(self,\
         filenames_path='py150_files/python100k_train.txt',\
         file_source_path='py150_files/',
-        samples=70000,
+        samples=7,
         block_size=512,
         tokenizer=PreTrainedTokenizer()):
         with open(filenames_path) as f: 
@@ -79,6 +95,9 @@ batch_count = 0
 
 script_loader = DataLoader(ProgrammingLanguagesDataset(tokenizer=tokenizer))
 for epoch in range(EPOCHS):
+    if epoch % 2 == 0 and epoch != 0:
+        checkpoint_model(model,output_dir+str(epoch))
+    
     print("Starting Epoch : ",epoch)
     for _ , script in enumerate(script_loader):
         outputs = model(script.to(device), labels=script.to(device))
@@ -115,9 +134,4 @@ for epoch in range(EPOCHS):
             sum_loss = 0.0
             model.train()
 
-
-output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
-output_config_file = os.path.join(output_dir, CONFIG_NAME)
-torch.save(model.state_dict(), output_model_file)
-model.config.to_json_file(output_config_file)
-tokenizer.save_vocabulary(output_dir)
+checkpoint_model(model,output_dir+str(EPOCHS))
