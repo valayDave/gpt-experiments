@@ -1,6 +1,6 @@
 
-from news_api_feed import *
 import time
+from news_api_feed import *
 from article_scraper import ArticleScraper
 import multiprocessing
 import click 
@@ -41,10 +41,10 @@ def multiprocess_scraping(num_processes,max_ext,sources=CURR_SOURCES):
             return False
         return max_ext < num_procs
 
-    for source in sources:
+    for date in QUERYING_DATES:
         if check_max(max_ext, num_procs):
             break
-        for date in QUERYING_DATES:
+        for source in sources:
             if check_max(max_ext, num_procs):
                 break
             source_ext = SourceExtractor(source)

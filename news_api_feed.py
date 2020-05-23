@@ -32,6 +32,16 @@ CORE_SOURCES = [
     'wired'
 ]
 
+CURR_SOURCES = [
+    'abc-news',
+    'al-jazeera-english',
+    'associated-press',
+    'bbc-news',
+    'bloomberg',
+    'breitbart-news',
+    'buzzfeed'
+]
+
 QUERYING_DATES = [
     '2020-04-22',
     '2020-04-23',
@@ -75,7 +85,7 @@ class SourceExtractor():
         self.name = source_name
         self.api_key = api_key   
         self.data_root_dir = data_root_dir
-        self.articles = None
+        self.articles = []
         
     def articles_present(self,from_date):
         file_path = os.path.join(self._get_dir_path(from_date),ARTICLE_LIST_FILE_NAME)
@@ -98,7 +108,7 @@ class SourceExtractor():
         with open(file_path,'r') as json_file:
             articles = json.load(json_file)
         if cache:
-            self.articles = articles
+            self.articles += articles
 
         return articles
 
