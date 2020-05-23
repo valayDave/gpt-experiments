@@ -13,14 +13,14 @@ CORE_SOURCES = [
     'bloomberg',
     'breitbart-news',
     'buzzfeed',
-    'cbc-news', # Completed Till Here. 
+    'cbc-news', 
     'cbs-news',
     'cnn',
     'fox-news',
     'independent',
     'msnbc',
     'nbc-news',
-    'politico',
+    'politico',  # Completed Till Here. 
     'reuters',
     'the-huffington-post',
     'the-wall-street-journal',
@@ -32,6 +32,7 @@ CORE_SOURCES = [
     'wired'
 ]
 
+
 CURR_SOURCES = [
     'abc-news',
     'al-jazeera-english',
@@ -39,11 +40,19 @@ CURR_SOURCES = [
     'bbc-news',
     'bloomberg',
     'breitbart-news',
-    'buzzfeed'
+    'buzzfeed',
+    'cbc-news', 
+    'cbs-news',
+    'cnn',
+    'fox-news',
+    'independent',
+    'msnbc',
+    'nbc-news',
+    'politico',
 ]
 
 QUERYING_DATES = [
-    '2020-04-22',
+    # '2020-04-22',
     '2020-04-23',
     '2020-04-24',
     '2020-04-25',

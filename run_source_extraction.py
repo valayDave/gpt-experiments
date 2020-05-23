@@ -56,17 +56,20 @@ def multiprocess_scraping(num_processes,max_ext,sources=CURR_SOURCES):
     pool.close()
     pool.join()
      
-
-def extract_source_data(NEWS_API_KEY):
+@cli.command(name='scrape_sources')
+@click.argument('news_api_key', type=str,default='')
+def extract_source_data(news_api_key):
+    print(news_api_key)
     for source in CORE_SOURCES:
-        ext = SourceExtractor(source,NEWS_API_KEY)
+        print(source)
+        ext = SourceExtractor(source,api_key=news_api_key)
         for query_date in QUERYING_DATES:
             time.sleep(0.1)
             try: 
-                ext.query_source(query_date)
+                ext.query_source_remote(query_date,save_to_file=True)
             except Exception as e:
-                break
                 print(e)
+                break
 
 if __name__=='__main__':
     cli()
