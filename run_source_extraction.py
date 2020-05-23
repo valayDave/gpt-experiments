@@ -6,15 +6,6 @@ import multiprocessing
 import click 
 
 NUM_SUBPROCESSES = multiprocessing.cpu_count()
-CURR_SOURCES = [
-    'abc-news'
-    'al-jazeera-english',
-    'associated-press',
-    'bbc-news',
-    'bloomberg',
-    'breitbart-news',
-    'buzzfeed'
-    ]
 
 @click.group()
 def cli():
