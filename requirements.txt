@@ -2,3 +2,6 @@ torch
 tensorflow
 transformers
 click
+streamlit
+newsapi
+newspaper3k
