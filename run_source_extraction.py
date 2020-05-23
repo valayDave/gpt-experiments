@@ -37,6 +37,8 @@ def multiprocess_scraping(num_processes,max_ext,sources=CURR_SOURCES):
     num_procs = 0
     
     def check_max(max_ext,num_procs):
+        if not max_ext:
+            return False
         return max_ext < num_procs
 
     for source in sources:
