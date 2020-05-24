@@ -9,4 +9,12 @@ def iter_one(MIN_CHAR_LENGTH=2000,MIN_DOC_THRESHOLD=900):
     df = df[df['scraped_content'].str.len() > MIN_CHAR_LENGTH]
     # Keep Data of Sources which are greater than 1000
     df = df.groupby('source.name').filter(lambda x: len(x) >= MIN_DOC_THRESHOLD)
+    # Data Cleanup measure to remove text block under and image for associated press. 
+    df['scraped_content'] = df['scraped_content'].str.replace(r"([^.]*?FILE - [^.]*\.)","")
+    # Add formater which tokenizes things in the data for training. 
+    formatter = SourceTextStyleFormater()
+    # Prepare training data by applying formatter and cleaning the rest. 
+    df['training_content'] = df.apply(lambda row: formatter(row['scraped_content'],row['title']),axis=1)
+    # Filtering post cleanup.
+    df = df[df['scraped_content'].str.len() > MIN_CHAR_LENGTH]
     return df

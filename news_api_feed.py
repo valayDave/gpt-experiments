@@ -104,7 +104,7 @@ class SourceExtractor():
         except:
             return False
 
-    def get_articles(self,from_date,cache=True):
+    def get_articles(self,from_date,cache=True,ignore_none=False):
         """get_articles 
         Extracts articles according to sources. From File System 
         if cache=True:
@@ -112,7 +112,11 @@ class SourceExtractor():
         """
         file_path = os.path.join(self._get_dir_path(from_date),ARTICLE_LIST_FILE_NAME)
         if not self.articles_present(from_date):
-            raise Exception("No Articles Present For %s" % file_path)
+            if not ignore_none:
+                raise Exception("No Articles Present For %s" % file_path)
+            else:
+                return []
+
 
         with open(file_path,'r') as json_file:
             articles = json.load(json_file)
