@@ -1,6 +1,10 @@
 from news_api_feed import *
 import pandas
 import re
+from transformers import GPT2Tokenizer
+from torch.utils.data import TensorDataset,random_split
+import torch
+from pandas import DataFrame
 
 class SourceDateAnalytics():
     def __init__(self,articles,source,date):
@@ -59,75 +63,3 @@ class SourceAnalytics():
         return '''
 
         '''
-
-class TextStyleFormater():
-    def __init__(self):
-        self.paragraph_token = "PARAGRAH"
-        self.newline_token = "NEW_LINE"
-    
-    def _quote_token(self,token):
-        return "<"+token+">"
-    
-    def _unquote_token(self,token):
-        return "<"+token+"/>"
-    
-    def format(self,content_text,content_headline):
-        raise NotImplementedError
-
-    def __call__(self,content_text,content_headline):
-        return self.format(content_text,content_headline)
-
-    def decompile(self,formatted_text):
-        raise NotImplementedError
-
-class SourceTextStyleFormater(TextStyleFormater):
-    def __init__(self):
-        TextStyleFormater.__init__(self)
-        self.headline_token = "HEADLINE"
-        self.body_token = "BODY"
-        # self.source = source # integrate source later
-        # self.source_token = "<|"+str(source_name).capitalize()+"|>" # dont need this right now. 
-    
-    def format(self, content_text, content_headline):
-        content_text = content_text.replace('\n\n',self._quote_token(self.paragraph_token))
-        content_text = content_text.replace('\n',self._quote_token(self.newline_token))
-
-        final_text = [
-            self._quote_token(self.headline_token),\
-            '' if not content_headline else content_headline,\
-            self._unquote_token(self.headline_token),\
-            self._quote_token(self.newline_token),\
-            self._quote_token(self.body_token),\
-            content_text,\
-            self._unquote_token(self.body_token),\
-        ]
-        print(len(final_text))
-        return ''.join(final_text)
-    
-    def decompile(self,formatted_text):
-        formatted_text = formatted_text.replace(self._quote_token(self.paragraph_token),'\n\n')
-        formatted_text = formatted_text.replace(self._quote_token(self.newline_token),'\n')
-        headline_text = re.findall(r'<HEADLINE>(.*)<HEADLINE/>',formatted_text)[0]
-        formatted_text = re.sub(r'<HEADLINE>(.*)<HEADLINE/>','',formatted_text) 
-        
-        formatted_text = formatted_text.replace(self._quote_token(self.body_token),'')
-        formatted_text= formatted_text.replace(self._unquote_token(self.body_token),'')
-        
-        return (headline_text,formatted_text)
-
-
-
-class StyleTransferPreprocessor():
-    
-    def __init__(self):
-        # This will ensure that all signatures regarding cleaning up picture related-text/ 
-        self.photo_cleaner = True
-
-
-    def _clear_photo_meta(self,text_content):
-        # Remove the picture related content to see how it will behave 
-        # associated-press pattern for photo credits
-        ap_pattern_text = re.findall(r"([^.]*?FILE-[^.]*\.)",text_content)
-        
-        # todo : remove the pattern detected in the text. 
-    
