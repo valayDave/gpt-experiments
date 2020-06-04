@@ -79,7 +79,6 @@ class DocumentDataPreprocessor():
         input_ids = torch.cat(input_ids,dim=0)
         attention_mask = torch.cat(attention_mask,dim=0)
         labels = torch.tensor(labels)
-        
         return TensorDataset(input_ids, attention_mask,labels)
 
     @staticmethod
@@ -97,12 +96,58 @@ class DocumentDataPreprocessor():
 
 
 class GPT2ClassificationModel(GPT2PreTrainedModel):
-    def __init__(self, config,):
+    # https://huggingface.co/transformers/model_doc/gpt2.html#gpt2model
+    def __init__(self, config,num_output_labels = 4):
+        config.output_attentions=True
         super(GPT2ClassificationModel, self).__init__(config)
         self.transformer = GPT2Model(config)
-
+        self.CNN_Max = nn.Sequential(
+            # Defining a 2D convolution layer
+            nn.Conv2d(1, 4, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(4),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            # Defining another 2D convolution layer
+            nn.Conv2d(4, 4, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(4),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        self.CNN_Avg = nn.Sequential(
+            # Defining a 2D convolution layer
+            nn.Conv2d(1, 4, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(4),
+            nn.ReLU(inplace=True),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            # Defining another 2D convolution layer
+            nn.Conv2d(4, 4, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(4),
+            nn.ReLU(inplace=True),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.ff_layers = nn.Sequential(
+            nn.Linear(256,10),
+            nn.Linear(10,num_output_labels)
+        )
+        self.final_softmax = nn.Softmax(dim=1)
         self.init_weights()
 
     def forward(self,input_ids, position_ids=None, token_type_ids=None, lm_labels=None, attention_mask=None, past=None):
         transformer_op = self.transformer(input_ids,past=past, position_ids=position_ids, attention_mask=attention_mask,token_type_ids=token_type_ids)
+        hidden,past,attentions = transformer_op
+        hidden = hidden.unsqueeze(1)
+        # Convolve the hidden vectors
+        max_op = self.CNN_Max(hidden)
+        avg_op = self.CNN_Avg(hidden)
+        # Shift dimensions to basically do a matrix Transpose of Max/avg pooliing from CNN
+        max_op = max_op.view(max_op.size(0),max_op.size(2),-1)
+        avg_op = avg_op.view(avg_op.size(0),avg_op.size(2),-1)
+        # Multiple the matrixes. 
+        result_op = torch.mul(avg_op,max_op)
+        # average of final result.
+        result_op = result_op.mean(-1)
+        # final softmax for result logits. 
+        result_logits = self.final_softmax(self.ff_layers(result_op))
+        
+        return result_logits
 
