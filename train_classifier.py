@@ -280,8 +280,9 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
 @click.option('--warmup',default=1000,type=int,help='Warmup Steps')
 @click.option('--checkpoint_every',default=10,type=int,help='Checkpoint Every Steps')
 @click.option('--num_samples',default=None,type=int,help='Number of Samples to Train on')
+@click.option('--train_split',default=0.7,type=float,help='Split of Training/Validation')
 @click.option('--gradient_accumulation_steps',default=1,type=int,help="Number of Steps for Grad Accumilation for Linear Scheduler")
-def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None,gradient_accumulation_steps=100):
+def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,train_split=None,checkpoint_every=None,gradient_accumulation_steps=1):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     processor = DocumentDataPreprocessor(tokenizer)
     df = training_data_extraction.iter_one(num_samples=num_samples)
@@ -300,7 +301,7 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         lr = lr, 
         eps = eps 
     )
-    train,validation = processor.split_dataset(tensor_dataset)
+    train,validation = processor.split_dataset(tensor_dataset,train_percent=train_split)
     train_dataloader = DataLoader(
         train,  # The training samples.
         sampler = RandomSampler(train), # Select batches randomly
