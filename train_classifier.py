@@ -147,12 +147,12 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
-        history['accuracy'].append(float(top1.avg))
-        history['loss'].append(float(losses.avg))
-        history['batch_time'].append(float(batch_time.avg))
-        
         if i % print_frequency == 0:
             progress.display(i)
+    
+    history['accuracy'].append(float(top1.avg))
+    history['loss'].append(float(losses.avg))
+    history['batch_time'].append(float(batch_time.avg))
     
     return history
 
@@ -198,12 +198,12 @@ def validate(validation_loader, model, loss_fn,device, print_frequency = 2,curr_
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-            history['accuracy'].append(float(top1.avg))
-            history['loss'].append(float(losses.avg))
-            history['batch_time'].append(float(batch_time.avg))
-            
             if i % print_frequency == 0:
                 progress.display(i)
+        
+        history['accuracy'].append(float(top1.avg))
+        history['loss'].append(float(losses.avg))
+        history['batch_time'].append(float(batch_time.avg))
         
     return history
 
@@ -211,7 +211,7 @@ def cross_entropy_one_hot(input_val, target):
     _, labels = target.max(dim=0)
     return nn.CrossEntropyLoss()(input_val, labels)
 
-def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device, print_frequency = 2,checkpoint=True):
+def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device,checkpoint_every=10, print_frequency = 2,checkpoint=True):
     print("Training/Testing Datasets Loaded!")
     epoch_histories = {
         'train': [],
@@ -220,13 +220,13 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
     for epoch in range(num_epochs):
         print("Training Epoch : ",epoch)
         # train for one epoch
-        train_history = train(train_loader, model, loss_fn, optimizer,scheduler ,device)
+        train_history = train(train_loader, model, loss_fn, optimizer,scheduler ,device,curr_epoch=epoch)
         epoch_histories['train'].append(train_history)
         # evaluate on validation set
         validation_history = validate(val_loader, model, loss_fn,device,curr_epoch=epoch)
         epoch_histories['validation'].append(validation_history)
         
-        if epoch % 2 == 0 and epoch != 0 and checkpoint:
+        if epoch % checkpoint_every == 0 and epoch != 0 and checkpoint:
             checkpoint_model(model,tokenizer,output_dir+str(epoch))
 
     return epoch_histories , model
@@ -237,9 +237,10 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
 @click.option('--num_epochs',default=2,type=int,help='Epoch of Model')
 @click.option('--lr',default=5e-5,type=float,help='Learning Rate')
 @click.option('--eps',default= 1e-8,type=float,help='epsilon')
-@click.option('--warmup',default=10000,type=int,help='Warmup Steps')
+@click.option('--warmup',default=1000,type=int,help='Warmup Steps')
+@click.option('--checkpoint_every',default=10,type=int,help='Checkpoint Every Steps')
 @click.option('--num_samples',default=None,type=int,help='Number of Samples to Train on')
-def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None):
+def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     processor = DocumentDataPreprocessor(tokenizer)
     save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir)
@@ -270,7 +271,19 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
     )
     loss_fn = nn.CrossEntropyLoss()
 
-    history,model = training_loop(train_dataloader,validation_dataloader,processor.tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device, print_frequency = 2)
+    history , model = training_loop(
+        train_dataloader,\
+        validation_dataloader,\
+        processor.tokenizer,\
+        num_epochs,\
+        model,\
+        loss_fn,\
+        optimizer,\
+        scheduler,\
+        device,\
+        checkpoint_every=checkpoint_every,\
+        print_frequency = 2
+    )
     checkpoint_model(model,tokenizer,output_dir+str(num_epochs))
     with open(os.path.join(output_dir,'histories.json'),'w') as outfile:
         json.dump(history,outfile)

@@ -9,3 +9,7 @@ http://files.srl.inf.ethz.ch/data/py150.tar.gz # Parse Tree Representations
 2. GPT-2 Based generative models for content prediction
 
 https://www.reddit.com/r/MachineLearning/comments/40ldq6/generative_adversarial_networks_for_text/
+
+# Training Classifier 
+
+nohup python -u ./train_classifier.py --batch_size 4 --num_epochs 10 --warmup 100 &
