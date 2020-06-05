@@ -22,17 +22,6 @@ def safe_mkdir(dir_path):
     except:
         pass
 
-def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path):
-    saved_data = dict(
-                    batch_size =batch_size,
-                    epochs=epochs,
-                    lr =lr,
-                    warmup =warmup,
-                    samples=samples,
-                    date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"))
-    safe_mkdir(dir_path)
-    with open(os.path.join(dir_path,'params.json'),'w') as outfile:
-        json.dump(saved_data,outfile)
 
 def checkpoint_model(ml_model,tokenizer,dir_path):
     safe_mkdir(dir_path)
@@ -65,6 +54,57 @@ class AverageMeter(object):
         fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
         return fmtstr.format(**self.__dict__)
 
+class HyperParamDict():
+    def __init__(self,batch_size,epochs,lr,warmup,samples,dir_path):
+        self.batch_size = batch_size
+        self.epochs= epochs
+        self.lr = lr
+        self.warmup = warmup
+        self.samples= samples
+    
+    def to_json(self):
+        self.__json__()
+    
+    def __str__(self):
+        return """
+        Num Samples :  {samples}
+        
+        Num Epochs :  {epochs}
+              
+        batch_size : {batch_size}
+        
+        Learning Rate : {lr}
+        
+        WarmUp :  {warmup}
+
+        Date : {date}
+        
+        """.format(
+                batch_size= str(self.batch_size),
+                epochs= str(self.epochs),
+                lr= str(self.lr),
+                warmup= str(self.warmup),
+                samples= str(self.samples),
+                date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)")
+            )
+    
+    def __json__(self):
+        saved_data = dict(
+                    batch_size= self.batch_size,
+                    epochs= self.epochs,
+                    lr= self.lr,
+                    warmup= self.warmup,
+                    samples= self.samples,
+                    date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"))
+        
+        return saved_data
+
+def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path):
+    saved_data = HyperParamDict(batch_size,epochs,lr,warmup,samples,dir_path)
+    safe_mkdir(dir_path)
+    with open(os.path.join(dir_path,'params.json'),'w') as outfile:
+        json.dump(saved_data.to_json(),outfile)
+    return saved_data
 
 class ProgressMeter(object):
     def __init__(self, num_batches, meters, prefix=""):
@@ -244,8 +284,11 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
 def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None,gradient_accumulation_steps=100):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     processor = DocumentDataPreprocessor(tokenizer)
-    save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir)
     df = training_data_extraction.iter_one(num_samples=num_samples)
+    if num_samples is None:
+        num_samples = len(df)
+    train_params = save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir)
+    print(str(train_params))
     training_content_df = df['training_content']
     labels = df['source.id']
     tensor_dataset=processor.prepare_dataset(training_content_df,labels,max_length=1024)
