@@ -139,9 +139,9 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
         top1.update(acc1[0].tolist()[0], input_ids.size(0))
 
         # compute gradient and do SGD step
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        optimizer.zero_grad()
         scheduler.step()
 
         # measure elapsed time
@@ -240,7 +240,8 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
 @click.option('--warmup',default=1000,type=int,help='Warmup Steps')
 @click.option('--checkpoint_every',default=10,type=int,help='Checkpoint Every Steps')
 @click.option('--num_samples',default=None,type=int,help='Number of Samples to Train on')
-def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None):
+@click.option('--gradient_accumulation_steps',default=100,type=int,help="Number of Steps for Grad Accumilation for Linear Scheduler")
+def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None,gradient_accumulation_steps=100):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     processor = DocumentDataPreprocessor(tokenizer)
     save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir)
@@ -256,8 +257,6 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         lr = lr, 
         eps = eps 
     )
-    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup, num_training_steps=-1)
-
     train,validation = processor.split_dataset(tensor_dataset)
     train_dataloader = DataLoader(
         train,  # The training samples.
@@ -269,6 +268,16 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         sampler = RandomSampler(validation), # Select batches randomly
         batch_size = batch_size # Trains with this batch size.
     )
+    
+    
+    t_total = ( # Derived From ;https://github.com/huggingface/transformers/blob/f9414f7553d3f1872b372990ef03205c0d1141df/examples/lightning_base.py#L114
+        (len(train_dataloader) // (batch_size))
+        // gradient_accumulation_steps
+        * float(num_epochs)
+    )
+
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup, num_training_steps=t_total)
+
     loss_fn = nn.CrossEntropyLoss()
 
     history , model = training_loop(
