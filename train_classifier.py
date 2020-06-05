@@ -63,7 +63,7 @@ class HyperParamDict():
         self.samples= samples
     
     def to_json(self):
-        self.__json__()
+        return self.__json__()
     
     def __str__(self):
         return """

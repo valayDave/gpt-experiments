@@ -135,6 +135,7 @@ class GPT2ClassificationModel(GPT2PreTrainedModel):
     def forward(self,input_ids, position_ids=None, token_type_ids=None, lm_labels=None, attention_mask=None, past=None):
         transformer_op = self.transformer(input_ids,past=past, position_ids=position_ids, attention_mask=attention_mask,token_type_ids=token_type_ids)
         hidden,past,attentions = transformer_op
+        # Adds a channel using unsqueeze
         hidden = hidden.unsqueeze(1)
         # Convolve the hidden vectors
         max_op = self.CNN_Max(hidden)
