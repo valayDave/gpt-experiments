@@ -240,7 +240,7 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
 @click.option('--warmup',default=1000,type=int,help='Warmup Steps')
 @click.option('--checkpoint_every',default=10,type=int,help='Checkpoint Every Steps')
 @click.option('--num_samples',default=None,type=int,help='Number of Samples to Train on')
-@click.option('--gradient_accumulation_steps',default=100,type=int,help="Number of Steps for Grad Accumilation for Linear Scheduler")
+@click.option('--gradient_accumulation_steps',default=1,type=int,help="Number of Steps for Grad Accumilation for Linear Scheduler")
 def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,checkpoint_every=None,gradient_accumulation_steps=100):
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
     processor = DocumentDataPreprocessor(tokenizer)
@@ -276,7 +276,7 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         * float(num_epochs)
     )
 
-    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup, num_training_steps=t_total)
+    scheduler = get_linear_schedule_with_warmup(optimizer, warmup, t_total)
 
     loss_fn = nn.CrossEntropyLoss()
 
