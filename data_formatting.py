@@ -51,8 +51,12 @@ class SourceTextStyleFormater(TextStyleFormater):
         return_tokens = [token.strip() for token in return_tokens]
         return return_tokens
 
-    def format(self, content_text, content_headline):
+    def format(self, content_text, content_headline,remove_paragraphs=None):
         content_text = content_text.replace('\n\n',self._quote_token(self.paragraph_token))
+        if remove_paragraphs is not None:
+            shortend_text = content_text.split(self._quote_token(self.paragraph_token))[:-remove_paragraphs]
+            content_text = self._quote_token(self.paragraph_token).join(shortend_text)
+            
         content_text = content_text.replace('\n',self._quote_token(self.newline_token))
 
         final_text = [

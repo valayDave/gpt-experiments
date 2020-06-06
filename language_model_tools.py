@@ -1,6 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+import os
+import json
 from torch.utils.data import (
     random_split,
     DataLoader,
@@ -29,7 +31,8 @@ class DocumentDataPreprocessor():
     SPECIAL_TOKENS = []
 
     def __init__(self,tokenizer:GPT2Tokenizer,\
-                formatter=SourceTextStyleFormater()):
+                formatter=SourceTextStyleFormater(),\
+                column_split_order=[]):
 
         self.tokenizer = tokenizer
         special_tokens_dict = {'cls_token': self.CLASS_TOKEN,'pad_token':self.tokenizer.eos_token}
@@ -38,7 +41,12 @@ class DocumentDataPreprocessor():
         self.formatter = formatter
         tokens = self.formatter.get_all_tokens()
         self.tokenizer.add_tokens(tokens)
-        
+        # # File to save column Order so that inference of the same model can be done easily later
+        # self.column_split_order = []
+        # self.column_split_save_file_name = 'column_order.json'
+
+    def save_vocabulary(self,out_dir):
+        self.tokenizer.save_vocabulary(out_dir)
 
     def prepare_dataset(self,documents,labels,max_length=100)->TensorDataset:
         """prepare_dataset 
@@ -46,8 +54,9 @@ class DocumentDataPreprocessor():
         """
         documents = documents
         # One-hot label conversion
+        column_split_order = labels.str.get_dummies().columns.tolist()
         labels = labels.str.get_dummies().values.tolist()
-
+        
         attention_mask = []
         input_ids = []
         # From https://colab.research.google.com/drive/13ErkLg5FZHIbnUGZRkKlL-9WNCNQPIow
@@ -79,7 +88,28 @@ class DocumentDataPreprocessor():
         input_ids = torch.cat(input_ids,dim=0)
         attention_mask = torch.cat(attention_mask,dim=0)
         labels = torch.tensor(labels)
-        return TensorDataset(input_ids, attention_mask,labels)
+        return TensorDataset(input_ids, attention_mask,labels),column_split_order
+
+    def get_tokenized_text(self,content_text,max_length=1024):
+        attention_mask = []
+        input_ids = []
+        encoded_dict = self.tokenizer.encode_plus(
+                    content_text,                      # Sentence to encode.
+                    add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                    max_length = max_length,           # Pad & truncate all sentences.
+                    pad_to_max_length = True,
+                    return_attention_mask=True,
+                    return_tensors = 'pt',     # Return pytorch tensors.
+            )
+    
+        # Add the encoded sentence to the list.    
+        input_ids.append(encoded_dict['input_ids'])
+        attention_mask.append(encoded_dict['attention_mask'])
+        # And its attention mask (simply differentiates padding from non-padding).
+        input_ids = torch.cat(input_ids,dim=0)
+        attention_mask = torch.cat(attention_mask,dim=0)
+        return input_ids,attention_mask
+
 
     @staticmethod
     def split_dataset(dataset,train_percent=0.9):
@@ -151,4 +181,41 @@ class GPT2ClassificationModel(GPT2PreTrainedModel):
         result_logits = self.final_softmax(self.ff_layers(result_op))
         
         return result_logits
+
+
+def load_model_and_tokenizer(pretrain_path):
+    tokenizer = GPT2Tokenizer.from_pretrained(pretrain_path)
+    processor = DocumentDataPreprocessor(tokenizer)
+    model = GPT2ClassificationModel.from_pretrained(pretrain_path) 
+    return model,processor
+
+
+class SourcePredictionModel():
+    def __init__(self,model_path,params_file_name='params.json'):
+        classification_model,model_processor = load_model_and_tokenizer(model_path)
+        self.classification_model = classification_model
+        self.model_processor = model_processor
+        with open(os.path.join(model_path[:-1],params_file_name),'r') as f:
+            model_params = json.load(f)
+        
+        self.model_params = model_params
+        self.column_split_order = model_params['column_split_order']
+    
+    def _get_formatted_text(self,headline,content_text,remove_paragraphs=None):
+        text_string = self.model_processor.formatter.format(content_text,headline,remove_paragraphs=remove_paragraphs)
+        return text_string
+
+    def predict_top_named_source(self,headline,content_text,remove_paragraphs=None):
+        model_op = self.predict_source(headline,content_text,remove_paragraphs=remove_paragraphs)
+        source_name,prediction_percent = self.column_split_order[model_op.argmax()],model_op[0][model_op.argmax()]
+        return source_name,prediction_percent
+    
+    def predict_source(self,headline,content_text,remove_paragraphs=None):
+        # Return source distribution.
+        text_string = self._get_formatted_text(headline,content_text,remove_paragraphs=remove_paragraphs) 
+        input_ids,attention_mask = self.model_processor.get_tokenized_text(text_string)
+        self.classification_model.eval()
+        with torch.no_grad():
+            output = self.classification_model(input_ids,attention_mask=attention_mask)
+            return output
 

@@ -13,3 +13,4 @@ https://www.reddit.com/r/MachineLearning/comments/40ldq6/generative_adversarial_
 # Training Classifier 
 
 nohup python -u ./train_classifier.py --batch_size 4 --num_epochs 10 --warmup 100 &
+nohup python -u ./train_classifier.py --batch_size 2 --num_epochs 8 --warmup 5000 --checkpoint_every 3 &

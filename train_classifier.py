@@ -24,12 +24,16 @@ def safe_mkdir(dir_path):
 
 
 def checkpoint_model(ml_model,tokenizer,dir_path):
+    """checkpoint_model 
+    Checkpoints the model/tokenizer etc. 
+    :param processor: This is the Dataset preparer with Tokenizer
+    """
     safe_mkdir(dir_path)
     output_model_file = os.path.join(dir_path, WEIGHTS_NAME)
     output_config_file = os.path.join(dir_path, CONFIG_NAME)
     torch.save(ml_model.state_dict(), output_model_file)
     ml_model.config.to_json_file(output_config_file)
-    tokenizer.save_vocabulary(dir_path)
+    tokenizer.save_pretrained(dir_path)
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -55,12 +59,13 @@ class AverageMeter(object):
         return fmtstr.format(**self.__dict__)
 
 class HyperParamDict():
-    def __init__(self,batch_size,epochs,lr,warmup,samples,dir_path):
+    def __init__(self,batch_size,epochs,lr,warmup,samples,column_split_order):
         self.batch_size = batch_size
         self.epochs= epochs
         self.lr = lr
         self.warmup = warmup
         self.samples= samples
+        self.column_split_order = column_split_order
     
     def to_json(self):
         return self.__json__()
@@ -77,6 +82,8 @@ class HyperParamDict():
         
         WarmUp :  {warmup}
 
+        Column Order : {column_split_order} 
+
         Date : {date}
         
         """.format(
@@ -85,7 +92,8 @@ class HyperParamDict():
                 lr= str(self.lr),
                 warmup= str(self.warmup),
                 samples= str(self.samples),
-                date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)")
+                date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"),
+                column_split_order=','.join(self.column_split_order)
             )
     
     def __json__(self):
@@ -95,12 +103,13 @@ class HyperParamDict():
                     lr= self.lr,
                     warmup= self.warmup,
                     samples= self.samples,
+                    column_split_order=self.column_split_order,
                     date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"))
         
         return saved_data
 
-def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path):
-    saved_data = HyperParamDict(batch_size,epochs,lr,warmup,samples,dir_path)
+def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path,column_split_order):
+    saved_data = HyperParamDict(batch_size,epochs,lr,warmup,samples,column_split_order)
     safe_mkdir(dir_path)
     with open(os.path.join(dir_path,'params.json'),'w') as outfile:
         json.dump(saved_data.to_json(),outfile)
@@ -196,7 +205,7 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
     
     return history
 
-def validate(validation_loader, model, loss_fn,device, print_frequency = 2,curr_epoch=1):
+def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr_epoch=1):
     history = {
         'loss': [],
         'accuracy':[],
@@ -288,11 +297,11 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
     df = training_data_extraction.iter_one(num_samples=num_samples)
     if num_samples is None:
         num_samples = len(df)
-    train_params = save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir)
-    print(str(train_params))
     training_content_df = df['training_content']
     labels = df['source.id']
-    tensor_dataset=processor.prepare_dataset(training_content_df,labels,max_length=1024)
+    tensor_dataset , column_split_order =processor.prepare_dataset(training_content_df,labels,max_length=1024)
+    train_params = save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir,column_split_order)
+    print(str(train_params))
     model = GPT2ClassificationModel.from_pretrained('gpt2') 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
@@ -337,11 +346,11 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         checkpoint_every=checkpoint_every,\
         print_frequency = 2
     )
-    checkpoint_model(model,tokenizer,output_dir+str(num_epochs))
+    checkpoint_model(model,processor.tokenizer,output_dir+str(num_epochs))
     with open(os.path.join(output_dir,'histories.json'),'w') as outfile:
         json.dump(history,outfile)
 
-    return history,model,processor.tokenizer
+    return history,model,processor
 
 if __name__=='__main__':
     train_classifier()

@@ -1,6 +1,8 @@
 import streamlit as st
 from news_api_feed import *
 import pandas
+from language_model_tools import SourcePredictionModel
+import torch 
 
 # Download a single file and make its content available as a string.
 # @st.cache(show_spinner=False)
@@ -15,7 +17,8 @@ OPTIONS = [
     'SCRAPING_ANALYSIS',
 ]
 
-@st.cache(show_spinner=False)
+
+@st.cache(show_spinner=True)
 def get_data(source_name,selected_date):
     ext = SourceExtractor(source_name)
     art_objs = ext.get_articles(selected_date)
@@ -23,6 +26,19 @@ def get_data(source_name,selected_date):
     df['publishedAt'] = pandas.to_datetime(df['publishedAt'])
     return df
 
+@st.cache(show_spinner=True,hash_funcs={SourcePredictionModel: id})
+def get_model():
+    storage_path = 'storage/models/classifier/1591355104/8'
+    model_path = storage_path
+    SourceModel = SourcePredictionModel(model_path)
+    return SourceModel
+
+# CORE_SOURCE_MODEL = get_model()
+
+
+def round_tensor(tensor,n_digits=5):
+    rounded = torch.round(tensor * 10**n_digits) / (10**n_digits)
+    return rounded
 
 
 def source_lookup():
@@ -32,29 +48,59 @@ def source_lookup():
     source_name = st.selectbox("Search for which Source?", CURR_SOURCES,1)
     selected_date = st.selectbox("Search for which Date?", QUERYING_DATES,1)
     scraped_toggle = st.checkbox("Show Only Scraped Content")
-    
-    # 
+
+    source_model = get_model()
+
     df = get_data(source_name,selected_date)
     if scraped_toggle:
         df = df[df['scraped']==True]
     hist_values = np.histogram(df['publishedAt'].dt.hour,bins=24,range=(0,24))[0]
+    title_search_text = st.text_input('Search for Stories From Title', '')
+    regex_toggle = st.checkbox("Treat Search as Regex")
     st.header('Histogram Of Stories Published On : %s By %s'%(selected_date,source_name))
     #
     st.bar_chart(hist_values)
     # st.table(df[['title','publishedAt','author','source.id','source.name','scraped','error','author']].head(n=20))
     if len(df) == 0:
         return 
-    ids = list(range(len(df)))
-    value = st.selectbox("Read Any Story From Selected Ones", ids, format_func=lambda x: df.iloc[x]['title'])
+    
+    search_df = df
+    if title_search_text != '':
+        search_df = df[df['title'].str.contains(title_search_text,case=regex_toggle)]
+    ids = list(range(len(search_df)))
+    if len(ids) ==0 :
+        st.markdown("### No Content Found")
+        return 
+    value = st.selectbox("Read Any Story From Selected Ones", ids, format_func=lambda x: search_df.iloc[x]['title'])
+    remove_paragraph_value = st.number_input('Select Number of Paragraphs to Remove',value=0)
 
-    content = df.iloc[value]['content']
+    content = search_df.iloc[value]['content']
     if 'scraped_content' in df.iloc[value]:
-        content = df.iloc[value]['scraped_content']
-
+        content = search_df.iloc[value]['scraped_content']
+    
+    headline = search_df.iloc[value]['title']
+    
+    if remove_paragraph_value == 0:
+        remove_paragraph = None
+    else:
+        remove_paragraph = remove_paragraph_value
+    
+    model_predicted_source,source_likehood = source_model.predict_top_named_source(headline,\
+                                        content,\
+                                        remove_paragraphs=remove_paragraph)
+    
+    language_model_predictions = """
+    ### Language Model Data 
+    Predicted Source : *{model_predicted_source}*\n
+    Predicted Score : {source_likehood}\n
+    """.format(model_predicted_source=model_predicted_source,\
+                source_likehood=round(float(source_likehood),6))                                    
+    # st.markdown(str(source_model.column_split_order))    
     markdown_content = '''
     # {title}
     '''.format(title=df.iloc[value]['title'])
     st.markdown('%s'%markdown_content)
+    st.markdown(language_model_predictions)
     st.markdown("### Content Scraped : %s" % 'True' if df.iloc[value]['scraped'] else 'False')
     st.markdown(content)    
 
@@ -70,7 +116,6 @@ def training_data_lookup():
     sources = list(df['source.id'].unique())
     source_name = st.selectbox("Search for which Source?", sources,1)
     selected_date = st.selectbox("Search for which Date?", QUERYING_DATES,1)
-
     df = df[df['source.id']==source_name]
     
     # Filter Date
@@ -97,14 +142,16 @@ def training_data_lookup():
 def init_app():
     # st.sidebar.title("What to do")
     app_mode = st.sidebar.selectbox("Choose the app mode",
-        ["Date Based Lookup", "Overall Analytics","Training Data Lookup"])
+        ["Date Based Lookup", "Overall Analytics",
+        # "Training Data Lookup"
+        ])
     
     if app_mode == "Date Based Lookup":
         source_lookup()
     elif app_mode == "Overall Analytics":
         st.code(open('labeling_dashboard.py').read())
-    elif app_mode=='Training Data Lookup':
-        training_data_lookup()
+    # elif app_mode=='Training Data Lookup':
+    #     training_data_lookup()
     # # if app_mode == "Show instructions":
     # #     st.sidebar.success('To continue select "Run the app".')
     # # elif app_mode == "Show the source code":

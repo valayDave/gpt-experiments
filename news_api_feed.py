@@ -35,24 +35,24 @@ CORE_SOURCES = [
 
 CURR_SOURCES = [
     'abc-news',
-    'al-jazeera-english',
     'associated-press',
-    'bbc-news',
-    'bloomberg',
     'breitbart-news',
-    'buzzfeed',
-    'cbc-news', 
-    'cbs-news',
-    'cnn',
-    'fox-news',
-    'independent',
-    'msnbc',
-    'nbc-news',
-    'politico',
+    'bbc-news',
+    # 'bloomberg',
+    # 'al-jazeera-english',
+    # 'buzzfeed',
+    # 'cbc-news', 
+    # 'cbs-news',
+    # 'cnn',
+    # 'fox-news',
+    # 'independent',
+    # 'msnbc',
+    # 'nbc-news',
+    # 'politico',
 ]
 
-QUERYING_DATES = [
-    # '2020-04-22',
+QUERYING_DATES = [    
+    '2020-04-22',
     '2020-04-23',
     '2020-04-24',
     '2020-04-25',
@@ -83,7 +83,17 @@ QUERYING_DATES = [
     '2020-05-20',
     '2020-05-21',
     '2020-05-22',
-    '2020-05-23'
+    '2020-05-23', # Start scraping from here. 
+    '2020-05-24',
+    '2020-05-25',
+    '2020-05-26',
+    '2020-05-27',
+    '2020-05-28',
+    '2020-05-29',
+    '2020-05-30',
+    '2020-05-31',
+    '2020-06-01',
+    
 ]
 
 class SourceExtractor():
