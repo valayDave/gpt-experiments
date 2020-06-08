@@ -71,8 +71,8 @@ class SourceTextStyleFormater(TextStyleFormater):
         ]
         return ''.join(final_text)
     
-    def __call__(self,content_text,content_headline):
-        return self.format(content_text,content_headline)
+    def __call__(self,content_text,content_headline,remove_paragraphs=None):
+        return self.format(content_text,content_headline,remove_paragraphs=remove_paragraphs)
 
     def decompile(self,formatted_text):
         formatted_text = formatted_text.replace(self._quote_token(self.paragraph_token),'\n\n')

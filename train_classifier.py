@@ -8,6 +8,7 @@ import os
 import click
 import datetime
 import json
+from metrics import ConfusionMatrix
 
 output_dir = "./storage/models/classifier/"+str(int(time.time()))+"/"
 TRAINING_NOTE = 'Source_Extraction_Classifier'
@@ -138,7 +139,7 @@ class ProgressMeter(object):
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1,),conf_matrix=None):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)
@@ -146,19 +147,26 @@ def accuracy(output, target, topk=(1,)):
 
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
+        
+        #Add to confusion matrix if supplied.
+        if conf_matrix is not None:
+            pred_argmax = torch.argmax(pred,dim=1)
+            conf_matrix.add_batch(pred_argmax,target)
 
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
         res = []
         for k in topk:
             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
-def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_frequency = 2,curr_epoch=1):
+def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_frequency = 2,curr_epoch=1,column_split_order=[]):
     history = {
         'loss': [],
         'accuracy':[],
-        'batch_time':[]
+        'batch_time':[],
+        'confusion_matrix':None,
+        'classification_metrics' : None
     }
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
@@ -171,6 +179,9 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
 
     # switch to train mode
     model.train()
+    conf_matrix = None
+    if len(column_split_order) > 0:
+        conf_matrix = ConfusionMatrix(column_split_order)
     # https://github.com/pytorch/pytorch/issues/16417#issuecomment-566654504
     end = time.time()
     for i, (input_ids,attention_mask, labels) in enumerate(train_loader):
@@ -186,7 +197,7 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
         loss = loss_fn(output, labels)
 
         # measure accuracy and record loss
-        acc1 = accuracy(output, labels)
+        acc1 = accuracy(output, labels,conf_matrix=conf_matrix)
         # print(loss.item())
         # print(acc1)
         # print(i)
@@ -208,14 +219,19 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
     history['accuracy'].append(float(top1.avg))
     history['loss'].append(float(losses.avg))
     history['batch_time'].append(float(batch_time.avg))
-    
+    if conf_matrix is not None:
+        history['classification_metrics'] = conf_matrix.get_all_metrics()
+        history['confusion_matrix'] = str(conf_matrix)
+
     return history
 
-def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr_epoch=1):
+def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr_epoch=1,column_split_order=[]):
     history = {
         'loss': [],
         'accuracy':[],
-        'batch_time':[]
+        'batch_time':[],
+        'classification_metrics':None,
+        'confusion_matrix':None
     }
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
@@ -229,6 +245,9 @@ def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr
     # switch to train mode
         # switch to evaluate mode
     model.eval()
+    conf_matrix = None
+    if len(column_split_order) > 0:
+        conf_matrix = ConfusionMatrix(column_split_order)
 
     with torch.no_grad():
         # https://github.com/pytorch/pytorch/issues/16417#issuecomment-566654504
@@ -246,7 +265,8 @@ def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr
             loss = loss_fn(output, labels)
 
             # measure accuracy and record loss
-            acc1 = accuracy(output, labels)
+            acc1 = accuracy(output, labels,conf_matrix=conf_matrix)
+
             losses.update(loss.item(), input_ids.size(0))
             top1.update(acc1[0].tolist()[0], input_ids.size(0))
 
@@ -259,14 +279,17 @@ def validate(validation_loader, model, loss_fn, device, print_frequency = 2,curr
         history['accuracy'].append(float(top1.avg))
         history['loss'].append(float(losses.avg))
         history['batch_time'].append(float(batch_time.avg))
-        
+        if conf_matrix is not None:
+            history['classification_metrics'] = conf_matrix.get_all_metrics()
+            history['confusion_matrix'] = str(conf_matrix)
+
     return history
 
 def cross_entropy_one_hot(input_val, target):
     _, labels = target.max(dim=0)
     return nn.CrossEntropyLoss()(input_val, labels)
 
-def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device,checkpoint_every=10, print_frequency = 2,checkpoint=True,checkpoint_dir=output_dir):
+def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device,checkpoint_every=10, print_frequency = 2,checkpoint=True,checkpoint_dir=output_dir,column_split_order=[]):
     print("Training/Testing Datasets Loaded!")
     epoch_histories = {
         'train': [],
@@ -275,10 +298,10 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
     for epoch in range(num_epochs):
         print("Training Epoch : ",epoch)
         # train for one epoch
-        train_history = train(train_loader, model, loss_fn, optimizer,scheduler ,device,curr_epoch=epoch)
+        train_history = train(train_loader, model, loss_fn, optimizer,scheduler ,device,curr_epoch=epoch,column_split_order=column_split_order)
         epoch_histories['train'].append(train_history)
         # evaluate on validation set
-        validation_history = validate(val_loader, model, loss_fn,device,curr_epoch=epoch)
+        validation_history = validate(val_loader, model, loss_fn,device,curr_epoch=epoch,column_split_order=column_split_order)
         epoch_histories['validation'].append(validation_history)
         
         if epoch % checkpoint_every == 0 and epoch != 0 and checkpoint:
@@ -350,7 +373,8 @@ def train_classifier(lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs
         scheduler,\
         device,\
         checkpoint_every=checkpoint_every,\
-        print_frequency = 2
+        print_frequency = 2,\
+        column_split_order=column_split_order
     )
     checkpoint_model(model,processor.tokenizer,output_dir+str(num_epochs))
     with open(os.path.join(output_dir,'histories.json'),'w') as outfile:

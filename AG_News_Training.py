@@ -2,7 +2,7 @@ import torchtext
 from torchtext.datasets import IMDB
 import pandas
 from torch.utils.data import DataLoader,RandomSampler
-from language_model_tools import IMDBSentimentSytleFormater,GPT2Tokenizer
+from language_model_tools import SourceTextStyleFormater,GPT2Tokenizer
 from language_model_tools import DocumentDataPreprocessor,GPT2ClassificationModel,nn
 import train_classifier as ClassifierTrainer
 from transformers import AdamW,get_linear_schedule_with_warmup
@@ -13,8 +13,8 @@ import os
 import json
 
 
-output_dir = "./storage/models/imdb-classifier/"+str(int(time.time()))+"/"
-TRAINING_NOTE = 'IMDB_Sentiment_Classification'
+output_dir = "./storage/models/agnews-classifier/"+str(int(time.time()))+"/"
+TRAINING_NOTE = 'AG_NEWS_Classification'
 STARTING_MESSAGE = '''
 Starting Training for {note}
 '''.format(note=TRAINING_NOTE)
@@ -22,7 +22,7 @@ Starting Training for {note}
 def get_data_loader(
         doc_processor:DocumentDataPreprocessor,\
         batch_size=3,\
-        dataset_path ='data/IMDB/aclImdb/train',
+        dataset_path ='data/AG_NEWS/train.csv',
         MAX_WORD_COUNT=1000,\
         MIN_DOC_THRESHOLD=300,\
         MIN_WORD_COUNT=0,
@@ -30,17 +30,14 @@ def get_data_loader(
     ):
     text_preprocessing = None #lambda x:mdl.model_processor(x)
     label_preprocessing = None # lambda x:1 if 'pos' else 0
-    TEXT = torchtext.data.RawField(preprocessing=text_preprocessing)
-    LABEL = torchtext.data.RawField(is_target=True,preprocessing=label_preprocessing)
-    dataset = IMDB(dataset_path,text_field=TEXT,label_field=LABEL)
-    data_objects = [{'text':i.text,'label':i.label} for i in dataset.examples]
-    df = pandas.DataFrame(data_objects)
-    df['training_content'] =  df.apply(lambda row: doc_processor.formatter(row['text']),axis=1)
+    df = pandas.read_csv(dataset_path,names=['label','headline','text'])
+    df['training_content'] =  df.apply(lambda row: doc_processor.formatter(row['text'],row['headline']),axis=1)
     df = df[df['training_content'].str.split().str.len() <= MAX_WORD_COUNT]
     # Filtering post cleanup.
     df = df[df['training_content'].str.split().str.len() >= MIN_WORD_COUNT]
     if num_samples is not None:
         df = df.sample(n=num_samples)
+    df['label'] = df['label'].apply(str)
     labels = df['label']
     training_content_df = df['training_content']
     tensor_dataset , column_split_order =doc_processor.prepare_dataset(training_content_df,labels,max_length=1024)
@@ -52,8 +49,8 @@ def get_data_loader(
     return dataloader,column_split_order
 
 
-@click.command(help='Train GPT-2 Classifier on IMDB Review Sentiment')
-@click.argument('dataset_root',default='data/IMDB/aclImdb',type=click.Path(exists=True))
+@click.command(help='Train GPT-2 Classifier on AG_News Dataset')
+@click.argument('dataset_root',default='data/AG_NEWS/',type=click.Path(exists=True))
 @click.option('--batch_size',default=4,type=int,help='Batch Size of Model')
 @click.option('--num_epochs',default=2,type=int,help='Epoch of Model')
 @click.option('--lr',default=5e-5,type=float,help='Learning Rate')
@@ -65,7 +62,7 @@ def get_data_loader(
 def train_classifier(dataset_root,lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =100,num_epochs=3,num_samples=None,train_split=None,checkpoint_every=None,gradient_accumulation_steps=1):
     print(STARTING_MESSAGE)
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-    processor = DocumentDataPreprocessor(tokenizer,formatter=IMDBSentimentSytleFormater())
+    processor = DocumentDataPreprocessor(tokenizer,formatter=SourceTextStyleFormater())
     train_dataset_path = os.path.join(dataset_root,'train')
     test_dataset_path = os.path.join(dataset_root,'test')
     train_dataloader, column_split_order = get_data_loader(processor,batch_size=batch_size,dataset_path=train_dataset_path,num_samples=num_samples)
@@ -75,7 +72,7 @@ def train_classifier(dataset_root,lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =1
     train_params = ClassifierTrainer.save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir,column_split_order,note=TRAINING_NOTE)
     print(str(train_params))
 
-    model = GPT2ClassificationModel.from_pretrained('gpt2',output_labels=2) 
+    model = GPT2ClassificationModel.from_pretrained('gpt2',output_labels=4) 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.resize_token_embeddings(len(processor.tokenizer))
