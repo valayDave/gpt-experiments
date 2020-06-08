@@ -45,6 +45,9 @@ class DocumentDataPreprocessor():
         # self.column_split_order = []
         # self.column_split_save_file_name = 'column_order.json'
 
+    def __call__(self,content_text):
+        return self.get_tokenized_text(content_text)
+
     def save_vocabulary(self,out_dir):
         self.tokenizer.save_vocabulary(out_dir)
 
@@ -109,7 +112,7 @@ class DocumentDataPreprocessor():
         input_ids = torch.cat(input_ids,dim=0)
         attention_mask = torch.cat(attention_mask,dim=0)
         return input_ids,attention_mask
-
+    
 
     @staticmethod
     def split_dataset(dataset,train_percent=0.9):
@@ -183,9 +186,9 @@ class GPT2ClassificationModel(GPT2PreTrainedModel):
         return result_logits
 
 
-def load_model_and_tokenizer(pretrain_path):
+def load_model_and_tokenizer(pretrain_path,formatter=SourceTextStyleFormater()):
     tokenizer = GPT2Tokenizer.from_pretrained(pretrain_path)
-    processor = DocumentDataPreprocessor(tokenizer)
+    processor = DocumentDataPreprocessor(tokenizer,formatter=formatter)
     model = GPT2ClassificationModel.from_pretrained(pretrain_path) 
     return model,processor
 

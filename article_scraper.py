@@ -8,7 +8,7 @@ class ArticleScraper():
     Extract articles For a date and Publisher and Saves the file Set by the SourceExtractor. 
     """
     def __init__(self,date,article_extractor:SourceExtractor):
-        multiprocessing.Process.__init__(self)
+        # multiprocessing.Process.__init__(self)
         self.date=date
         self.article_extractor = article_extractor
         self.articles = self.article_extractor.get_articles(date)
@@ -32,3 +32,16 @@ class ArticleScraper():
         print("Scraped ",num_scraped," Articles for ",self.article_extractor.name,self.date)
         self.article_extractor._save_to_file(self.date,self.articles)
         return num_scraped
+
+
+def get_scraped_article(url):
+    art = newspaper.Article(url)
+    try: 
+        art.build() 
+    except:
+        return None
+    
+    return {
+        'content_text' : art.text,
+        'title' : art.title
+    }

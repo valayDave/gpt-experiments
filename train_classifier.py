@@ -10,6 +10,7 @@ import datetime
 import json
 
 output_dir = "./storage/models/classifier/"+str(int(time.time()))+"/"
+TRAINING_NOTE = 'Source_Extraction_Classifier'
 
 from transformers import ( 
     WEIGHTS_NAME, 
@@ -59,19 +60,22 @@ class AverageMeter(object):
         return fmtstr.format(**self.__dict__)
 
 class HyperParamDict():
-    def __init__(self,batch_size,epochs,lr,warmup,samples,column_split_order):
+    def __init__(self,batch_size,epochs,lr,warmup,samples,column_split_order,note):
         self.batch_size = batch_size
         self.epochs= epochs
         self.lr = lr
         self.warmup = warmup
         self.samples= samples
         self.column_split_order = column_split_order
+        self.note = note
     
     def to_json(self):
         return self.__json__()
     
     def __str__(self):
         return """
+        Note : {note}
+        
         Num Samples :  {samples}
         
         Num Epochs :  {epochs}
@@ -93,7 +97,8 @@ class HyperParamDict():
                 warmup= str(self.warmup),
                 samples= str(self.samples),
                 date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"),
-                column_split_order=','.join(self.column_split_order)
+                column_split_order=','.join(self.column_split_order),
+                note=self.note
             )
     
     def __json__(self):
@@ -104,12 +109,13 @@ class HyperParamDict():
                     warmup= self.warmup,
                     samples= self.samples,
                     column_split_order=self.column_split_order,
-                    date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"))
+                    date=datetime.datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"),
+                    note=self.note)
         
         return saved_data
 
-def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path,column_split_order):
-    saved_data = HyperParamDict(batch_size,epochs,lr,warmup,samples,column_split_order)
+def save_training_params(batch_size,epochs,lr,warmup,samples,dir_path,column_split_order,note=TRAINING_NOTE):
+    saved_data = HyperParamDict(batch_size,epochs,lr,warmup,samples,column_split_order,note)
     safe_mkdir(dir_path)
     with open(os.path.join(dir_path,'params.json'),'w') as outfile:
         json.dump(saved_data.to_json(),outfile)
@@ -260,7 +266,7 @@ def cross_entropy_one_hot(input_val, target):
     _, labels = target.max(dim=0)
     return nn.CrossEntropyLoss()(input_val, labels)
 
-def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device,checkpoint_every=10, print_frequency = 2,checkpoint=True):
+def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, optimizer,scheduler,device,checkpoint_every=10, print_frequency = 2,checkpoint=True,checkpoint_dir=output_dir):
     print("Training/Testing Datasets Loaded!")
     epoch_histories = {
         'train': [],
@@ -276,7 +282,7 @@ def training_loop(train_loader,val_loader,tokenizer,num_epochs, model, loss_fn, 
         epoch_histories['validation'].append(validation_history)
         
         if epoch % checkpoint_every == 0 and epoch != 0 and checkpoint:
-            checkpoint_model(model,tokenizer,output_dir+str(epoch))
+            checkpoint_model(model,tokenizer,checkpoint_dir+str(epoch))
 
     return epoch_histories , model
 

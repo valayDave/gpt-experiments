@@ -3,6 +3,7 @@ from news_api_feed import *
 import pandas
 from language_model_tools import SourcePredictionModel
 import torch 
+import article_scraper
 
 # Download a single file and make its content available as a string.
 # @st.cache(show_spinner=False)
@@ -73,7 +74,8 @@ def source_lookup():
         return 
     value = st.selectbox("Read Any Story From Selected Ones", ids, format_func=lambda x: search_df.iloc[x]['title'])
     remove_paragraph_value = st.number_input('Select Number of Paragraphs to Remove',value=0)
-
+    para_remove_parser = st.checkbox("Render Parsed Document Post Paragraph Removal")
+    hide_model_prediction = st.checkbox("Hide Language Model Prediction")
     content = search_df.iloc[value]['content']
     if 'scraped_content' in df.iloc[value]:
         content = search_df.iloc[value]['scraped_content']
@@ -88,7 +90,6 @@ def source_lookup():
     model_predicted_source,source_likehood = source_model.predict_top_named_source(headline,\
                                         content,\
                                         remove_paragraphs=remove_paragraph)
-    
     language_model_predictions = """
     ### Language Model Data 
     Predicted Source : *{model_predicted_source}*\n
@@ -98,10 +99,18 @@ def source_lookup():
     # st.markdown(str(source_model.column_split_order))    
     markdown_content = '''
     # {title}
-    '''.format(title=df.iloc[value]['title'])
+    '''.format(title=headline)
     st.markdown('%s'%markdown_content)
-    st.markdown(language_model_predictions)
+    if not hide_model_prediction:
+        st.markdown(language_model_predictions)
     st.markdown("### Content Scraped : %s" % 'True' if df.iloc[value]['scraped'] else 'False')
+    if para_remove_parser:
+        parsed_content = source_model._get_formatted_text(headline,content,remove_paragraphs=remove_paragraph) 
+        st.markdown("""
+        ## Parsed Content \n
+        {parsed_content}\n
+        ## Actual Content\n
+        """.format(parsed_content=parsed_content))
     st.markdown(content)    
 
 
@@ -139,17 +148,72 @@ def training_data_lookup():
     st.markdown("### Content Scraped : %s" % 'True' if df.iloc[value]['scraped'] else 'False')
     st.markdown(content)    
 
+
+def instant_page_lookup():
+    source_model = get_model()
+    title_search_text = st.text_input('Scraped Content From Given Link and Run classifier', '')
+    if title_search_text == "":
+        return 
+    
+    returned_data = article_scraper.get_scraped_article(title_search_text)
+    if returned_data is None:
+        error_message = '''
+        ## Error Extracting Data For Article \n
+        {article}
+        '''.format(article=title_search_text)
+        st.markdown(error_message)
+        return 
+    headline = returned_data['title']
+    content = returned_data['content_text']
+    remove_paragraph_value = st.number_input('Select Number of Paragraphs to Remove',value=0)
+    if remove_paragraph_value == 0:
+        remove_paragraph = None
+    else:
+        remove_paragraph = remove_paragraph_value
+
+    model_predicted_source,source_likehood = source_model.predict_top_named_source(headline,\
+                                        content,\
+                                        remove_paragraphs=remove_paragraph)
+    language_model_predictions = """
+    Predicted Source : *{model_predicted_source}*\n
+    Predicted Score : {source_likehood}\n
+    """.format(model_predicted_source=model_predicted_source,\
+                source_likehood=round(float(source_likehood),6))                                    
+    # st.markdown(str(source_model.column_split_order))    
+    markdown_content = '''
+    # {title}\n
+    ## Language Model Predictions
+    {language_model_predictions}\n
+    ## Content
+    '''.format(title=headline,language_model_predictions=language_model_predictions)
+    st.markdown('%s'%markdown_content)
+    # if para_remove_parser:
+    #     parsed_content = source_model._get_formatted_text(headline,content,remove_paragraphs=remove_paragraph) 
+    #     st.markdown("""
+    #     ## Parsed Content \n
+    #     {parsed_content}\n
+    #     ## Actual Content\n
+    #     """.format(parsed_content=parsed_content))
+    st.markdown(content)  
+
+    pass
+
 def init_app():
     # st.sidebar.title("What to do")
     app_mode = st.sidebar.selectbox("Choose the app mode",
-        ["Date Based Lookup", "Overall Analytics",
-        # "Training Data Lookup"
+        [
+            "Date Based Lookup", 
+            "Overall Analytics",
+            "Instant Page Lookup"
+            # "Training Data Lookup"
         ])
     
     if app_mode == "Date Based Lookup":
         source_lookup()
     elif app_mode == "Overall Analytics":
         st.code(open('labeling_dashboard.py').read())
+    elif app_mode == "Instant Page Lookup":
+        instant_page_lookup()
     # elif app_mode=='Training Data Lookup':
     #     training_data_lookup()
     # # if app_mode == "Show instructions":

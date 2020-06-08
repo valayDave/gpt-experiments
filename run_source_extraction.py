@@ -41,7 +41,8 @@ def multiprocess_scraping(num_processes,max_ext,sources=CURR_SOURCES):
             source_ext = SourceExtractor(source)
             if not source_ext.articles_present(date):
                 continue
-            pool.apply_async(scrape_articles,(date,source_ext),callback=print_result)
+            print("Extracting ",source,date)
+            pool.apply_async(scrape_articles,(date,source_ext))
             num_procs+=1
     
     pool.close()
