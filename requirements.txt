@@ -5,3 +5,4 @@ click
 streamlit
 newsapi
 newspaper3k
+torchtext
