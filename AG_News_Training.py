@@ -72,7 +72,7 @@ def train_classifier(dataset_root,lr = 5e-5,eps = 1e-8 ,batch_size = 2,warmup =1
     train_params = ClassifierTrainer.save_training_params(batch_size,num_epochs,lr,warmup,num_samples,output_dir,column_split_order,note=TRAINING_NOTE)
     print(str(train_params))
 
-    model = GPT2ClassificationModel.from_pretrained('gpt2',output_labels=4) 
+    model = GPT2ClassificationModel.from_pretrained('gpt2',num_output_labels=4) 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.resize_token_embeddings(len(processor.tokenizer))
