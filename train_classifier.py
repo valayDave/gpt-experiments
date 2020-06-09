@@ -197,7 +197,7 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
         loss = loss_fn(output, labels)
 
         # measure accuracy and record loss
-        acc1 = accuracy(output, labels,conf_matrix=conf_matrix)
+        acc1 = accuracy(output, labels,conf_matrix=None)
         # print(loss.item())
         # print(acc1)
         # print(i)
