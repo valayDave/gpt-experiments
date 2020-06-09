@@ -151,7 +151,7 @@ def accuracy(output, target, topk=(1,),conf_matrix=None):
         #Add to confusion matrix if supplied.
         if conf_matrix is not None:
             pred_argmax = torch.argmax(pred,dim=1)
-            conf_matrix.add_batch(pred_argmax,target)
+            conf_matrix.add_batch(pred_argmax.numpy(),target.numpy())
 
         correct = pred.eq(target.view(1, -1).expand_as(pred))
         res = []
