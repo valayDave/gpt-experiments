@@ -180,8 +180,8 @@ def train(train_loader, model, loss_fn, optimizer,scheduler,device, print_freque
     # switch to train mode
     model.train()
     conf_matrix = None
-    if len(column_split_order) > 0:
-        conf_matrix = ConfusionMatrix(column_split_order)
+    # if len(column_split_order) > 0:
+    #     conf_matrix = ConfusionMatrix(column_split_order)
     # https://github.com/pytorch/pytorch/issues/16417#issuecomment-566654504
     end = time.time()
     for i, (input_ids,attention_mask, labels) in enumerate(train_loader):
