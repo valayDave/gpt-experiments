@@ -1,14 +1,15 @@
-http://files.srl.inf.ethz.ch/data/py150_files.tar.gz # Python Code 
 
-http://files.srl.inf.ethz.ch/data/py150.tar.gz # Parse Tree Representations
+# GPT-2 Experiements
 
-# Some Ideas to Try Out. 
+# Project Details
 
-1. GPT-2 Based classification of website content. 
+1. Scraping and Content Extraction via content crawler. 
+2. GPT-2 Based classification of website content. 
+3. For pretraining on Python Code Checkout : 
+  http://files.srl.inf.ethz.ch/data/py150_files.tar.gz # Python Code 
 
-2. GPT-2 Based generative models for content prediction
+  http://files.srl.inf.ethz.ch/data/py150.tar.gz # Parse Tree Representations
 
-https://www.reddit.com/r/MachineLearning/comments/40ldq6/generative_adversarial_networks_for_text/
 
 # Training Classifier 
 
