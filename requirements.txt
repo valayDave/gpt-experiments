@@ -3,6 +3,6 @@ tensorflow
 transformers
 click
 streamlit
-newsapi
+newsapi-python
 newspaper3k
 torchtext
