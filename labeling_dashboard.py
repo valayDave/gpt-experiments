@@ -155,17 +155,17 @@ def instant_page_lookup():
     source_model = get_model()
     st.markdown(
         '''
-        # GPT-2 Publisher Realtime Classification Demo
+        # GPT-2 Publisher Realtime Classification Demo\n
 
-        The current GPT-2 Model has been Trained On Classify {publishers}
+        The current GPT-2 Model has been trained to classify {publishers}\n
 
-        Give Link to URL from website and See It in action
+        Give Link to URL from website and See It in action\n
 
         Example URL :\n
-        [Brietbart Article](https://www.breitbart.com/2020-election/2020/08/20/live-updates-democratic-national-convention-night-four/)
-        [BBC-News](https://www.bbc.com/news/world-europe-53856609)
-        [ABC-News](https://abcnews.go.com/Politics/mom-traveling-kids-kicked-off-flight-year-refuses/story?id=72503986)
-        [Associated-Press](https://apnews.com/a1909f485327e9aff894f6258a25e7af)
+        [Brietbart Article](https://www.breitbart.com/2020-election/2020/08/20/live-updates-democratic-national-convention-night-four/)\n
+        [BBC-News](https://www.bbc.com/news/world-europe-53856609)\n
+        [ABC-News](https://abcnews.go.com/Politics/mom-traveling-kids-kicked-off-flight-year-refuses/story?id=72503986)\n
+        [Associated-Press](https://apnews.com/a1909f485327e9aff894f6258a25e7af)\n
         '''.format(
             publishers =', '.join(source_model.column_split_order)
         )
