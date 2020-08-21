@@ -202,8 +202,8 @@ def init_app():
     # st.sidebar.title("What to do")
     app_mode = st.sidebar.selectbox("Choose the app mode",
         [
-            "Date Based Lookup", 
-            "Overall Analytics",
+            # "Date Based Lookup", 
+            # "Overall Analytics",
             "Instant Page Lookup"
             # "Training Data Lookup"
         ])
