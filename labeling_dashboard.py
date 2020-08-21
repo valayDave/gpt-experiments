@@ -153,10 +153,9 @@ def training_data_lookup():
 
 def instant_page_lookup():
     source_model = get_model()
-    st.markdown(
+    st.markdown('# GPT-2 Publisher Realtime Classification Demo\n')
+    st.sidebar.markdown(
         '''
-        # GPT-2 Publisher Realtime Classification Demo\n
-
         The current GPT-2 Model has been trained to classify {publishers}\n
 
         Give Link to URL from website and See It in action\n
