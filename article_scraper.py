@@ -38,7 +38,8 @@ def get_scraped_article(url):
     art = newspaper.Article(url)
     try: 
         art.build() 
-    except:
+    except Exception as e:
+        print(e)
         return None
     
     return {
