@@ -161,7 +161,11 @@ def instant_page_lookup():
 
         Give Link to URL from website and See It in action
 
-        Example URL : [Brietbart Article](https://www.breitbart.com/2020-election/2020/08/20/live-updates-democratic-national-convention-night-four/)
+        Example URL :\n
+        [Brietbart Article](https://www.breitbart.com/2020-election/2020/08/20/live-updates-democratic-national-convention-night-four/)
+        [BBC-News](https://www.bbc.com/news/world-europe-53856609)
+        [ABC-News](https://abcnews.go.com/Politics/mom-traveling-kids-kicked-off-flight-year-refuses/story?id=72503986)
+        [Associated-Press](https://apnews.com/a1909f485327e9aff894f6258a25e7af)
         '''.format(
             publishers =', '.join(source_model.column_split_order)
         )
