@@ -212,6 +212,11 @@ class SourcePredictionModel():
         model_op = self.predict_source(headline,content_text,remove_paragraphs=remove_paragraphs)
         source_name,prediction_percent = self.column_split_order[model_op.argmax()],model_op[0][model_op.argmax()]
         return source_name,prediction_percent
+
+    def get_all_predictions(self,headline,content_text,remove_paragraphs=None):
+        model_op = self.predict_source(headline,content_text,remove_paragraphs=remove_paragraphs)
+        model_list = model_op.tolist()
+        return list(zip(self.column_split_order,model_list[0])) # [(name,pred)]
     
     def predict_source(self,headline,content_text,remove_paragraphs=None):
         # Return source distribution.

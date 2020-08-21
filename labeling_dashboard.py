@@ -3,6 +3,8 @@ from news_api_feed import *
 import pandas
 from language_model_tools import SourcePredictionModel
 import torch 
+import plotly
+import plotly.graph_objects as go
 import article_scraper
 
 # Download a single file and make its content available as a string.
@@ -151,6 +153,17 @@ def training_data_lookup():
 
 def instant_page_lookup():
     source_model = get_model()
+    st.markdown(
+        '''
+        # GPT-2 Publisher Realtime Classification Demo
+
+        The current GPT-2 Model has been Trained On Classify {publishers}
+
+        Give Link to URL from website and See It in action
+        '''.format(
+            publishers =', '.join(source_model.column_split_order)
+        )
+    )
     title_search_text = st.text_input('Scraped Content From Given Link and Run classifier', '')
     if title_search_text == "":
         return 
@@ -174,19 +187,36 @@ def instant_page_lookup():
     model_predicted_source,source_likehood = source_model.predict_top_named_source(headline,\
                                         content,\
                                         remove_paragraphs=remove_paragraph)
+    all_pred_tuples = source_model.get_all_predictions(headline,content,remove_paragraphs=remove_paragraph)
     language_model_predictions = """
     Predicted Source : *{model_predicted_source}*\n
     Predicted Score : {source_likehood}\n
     """.format(model_predicted_source=model_predicted_source,\
-                source_likehood=round(float(source_likehood),6))                                    
+                source_likehood=round(float(source_likehood),6))
     # st.markdown(str(source_model.column_split_order))    
+    df2=pandas.DataFrame(list(map(lambda x:{'source_name':x[0],'precent_prediction':x[1]},all_pred_tuples)))
+    
+    pub_dist_chart = go.Figure()
+    pub_dist_chart.add_trace(
+                go.Bar(x=df2['source_name'],\
+                        y=df2['precent_prediction'],\
+                        name='Probability'
+                        )
+            )
+   
     markdown_content = '''
     # {title}\n
     ## Language Model Predictions
     {language_model_predictions}\n
-    ## Content
+    
+    ## Publish Confidence Distribution
     '''.format(title=headline,language_model_predictions=language_model_predictions)
     st.markdown('%s'%markdown_content)
+
+    st.plotly_chart(
+        pub_dist_chart
+    )
+    st.markdown('## Content')
     # if para_remove_parser:
     #     parsed_content = source_model._get_formatted_text(headline,content,remove_paragraphs=remove_paragraph) 
     #     st.markdown("""

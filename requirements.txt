@@ -6,3 +6,4 @@ streamlit
 newsapi-python
 newspaper3k
 torchtext
+plotly
