@@ -160,6 +160,8 @@ def instant_page_lookup():
         The current GPT-2 Model has been Trained On Classify {publishers}
 
         Give Link to URL from website and See It in action
+
+        Example URL : (Brietbart Article)[https://www.breitbart.com/2020-election/2020/08/20/live-updates-democratic-national-convention-night-four/]
         '''.format(
             publishers =', '.join(source_model.column_split_order)
         )
